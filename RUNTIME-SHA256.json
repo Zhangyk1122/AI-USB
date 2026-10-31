@@ -1,0 +1,7 @@
+{
+  "platforms/darwin-arm64/node": "f5f9b9db4d95f5e0340982685f083de654c21eef9d9122cab5321081ccaa2601",
+  "platforms/win32-x64/node.exe": "c6335d08331c23d68b9f2b18adb102002d76ef150b47248e954c507e0d033664",
+  "platforms/win32-x64/git/bin/bash.exe": "4740ceda8997f13997da982e32f8bc3d679d8abb30266f0b25804ea927bb4a92",
+  "platforms/darwin-arm64/cc-switch/CC Switch.app/Contents/MacOS/cc-switch": "d07dd3ab3247dd117f6a048c5fc5f630fd03e8170ca1a6e6c735b069051fc120",
+  "platforms/win32-x64/cc-switch/cc-switch.exe": "b46a2516faf1183e3750ff2d5817ab4eae297c450ae7f30b9514463a3e5d9df4"
+}

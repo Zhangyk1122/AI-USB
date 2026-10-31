@@ -1,0 +1,31 @@
+# Private state, sessions, backup snapshots and user projects
+/data/
+/backups/
+/workspace/
+/config/*
+!/config/settings.json
+
+# Keep reproducible dependency manifests, not the multi-GB prepared runtimes
+/platforms/*
+!/platforms/darwin-arm64/
+!/platforms/win32-x64/
+/platforms/darwin-arm64/*
+!/platforms/darwin-arm64/package.json
+!/platforms/darwin-arm64/package-lock.json
+/platforms/win32-x64/*
+!/platforms/win32-x64/package.json
+!/platforms/win32-x64/package-lock.json
+
+# Local secrets and generated artifacts
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.log
+*.tmp
+*.zip
+*.tar.gz
+*.mp4
+.DS_Store
+Thumbs.db
