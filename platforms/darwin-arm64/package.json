@@ -1,9 +1,0 @@
-{
-  "name": "ai-usb-demo-darwin-arm64",
-  "private": true,
-  "dependencies": {
-    "@openai/codex": "0.166.0",
-    "@anthropic-ai/claude-code": "2.1.316",
-    "@deepseek-ai/dsh": "0.2.1-rc.5"
-  }
-}

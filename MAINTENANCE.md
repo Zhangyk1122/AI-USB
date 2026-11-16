@@ -1,75 +1,63 @@
-# U 盘运行与维护
+# 便携运行与维护（DeepSeek Harness / Windows x64）
 
-整个 `AI-USB-Demo` 文件夹复制到 U 盘后，Mac 打开 `Mac-Start.command`，Windows 打开 `Windows-Start.bat`，即可从 U 盘启动程序。**日常启动不需要压缩或解压，也不需要先把 Agent 安装到电脑。** 下载 ZIP 仅是分发方式；拿到 ZIP 时只需最初解压一次。
+整个 `AI-USB-Demo` 文件夹复制到 U 盘后，双击 `dsh.bat` 即可从 U 盘启动 Harness（`Windows-Start.bat` 是转发到它的兼容别名）。日常启动不需要压缩、解压或预装任何组件。
 
-主菜单 **9** 打开维护菜单，也可以直接打开 `Mac-Maintain.command` 或 `Windows-Maintain.bat`。API 的模型、地址和 Key 仍在 CC Switch 中设置，维护菜单只读取这些配置进行检查。
+维护入口 `Windows-Maintain.bat` 提供诊断、备份、恢复、更新和运行记录清理。API 的模型、地址和 Key 属于 Harness 自身配置，维护菜单不读取也不修改它们。
 
 ## 数据和缓存
 
 | 内容 | 位置 |
 |---|---|
-| 三个 Agent 程序、Node、Windows Git、CC Switch | U 盘 `platforms/` |
-| 直连配置和会话 | U 盘 `config/`、`data/codex/`、`data/claude/`、`data/harness/` |
-| CC Switch 数据库、Key、Agent 配置和会话 | U 盘 `data/cc-switch/` |
+| Node、DeepSeek Harness | U 盘 `platforms/win32-x64/` |
+| Harness 配置、凭据、会话 | U 盘 `data/harness/`（`DSH_HOME`、`DSH_AGENTS_HOME`） |
 | 默认工作区 | U 盘 `workspace/`，或自己指定的 `AI_USB_WORKSPACE` |
-| npm、Node 编译缓存、临时文件、遵循 XDG 的缓存、简要运行诊断 | Mac `~/Library/Caches/AI-USB-Demo/<ID>/`；Windows `%LOCALAPPDATA%\AI-USB-Demo\<ID>\` |
+| npm、Node 编译缓存、临时文件、简要运行诊断 | 本机 `%LOCALAPPDATA%\AI-USB-Demo\<ID>\` |
 | 配置与会话备份 | U 盘 `backups/` |
 
-`data/.portable-id` 是随盘保存的标识；同一台电脑上换盘符或移动文件夹，仍能命中原来的本机缓存。更换电脑会在新电脑重建缓存。本机缓存目录不可写时，Agent 启动器回退到 U 盘 `data/cache/` 并提示。旧的 `data/npm-cache/` 不会继续使用，也不会自动删除。
+`data/.portable-id` 随盘保存；同一台电脑上换盘符或移动文件夹仍能命中原来的本机缓存，更换电脑则在新电脑重建。本机缓存目录不可写时，启动器回退到 U 盘 `data/cache/` 并提示。
 
-Windows 维护入口额外缓存一份与 U 盘文件 SHA256 相同的 Node，用来执行维护，防止更新时正在运行的 U 盘 `node.exe` 锁住旧程序目录。这是自动生成的本机缓存，不是全局安装。该入口需要本机用户缓存目录可写。
-
-这里只重定向工具支持的缓存和临时目录，不移动整个 Agent HOME；工具硬编码在自己数据目录内的缓存、系统 WebView/钥匙串/浏览器记录不保证全部重定向。可以在退出程序后清理本机缓存；配置和会话不会因此被删除。运行时本体仍从 U 盘读取，因此首次复制和普通 U 盘的小文件性能问题仍然存在。
+这里只重定向工具支持的缓存与临时目录，不移动整个 Agent HOME；系统临时文件、浏览器记录等仍可能留在宿主机。
 
 ## 诊断
 
-- 维护 **1**：检查双平台必需文件、当前机器架构和 Node、执行权限、运行时 SHA256、当前平台三个 Agent 的版本命令、系统 Git/WebView2、缓存目录、运行记录和最近一次退出原因。不联网调用模型。
-- 维护 **2**：读取 CC Switch 管理的 Codex、Claude、Harness 配置，分别请求对应供应商的模型列表。不会把直连 Key 当成 CC 配置已通过。
-- 维护 **3**：私密输入自己的 DeepSeek Key，检查官方模型列表；输入不由 Demo 保存到文件。
+维护 `1` 执行统一离线诊断：
 
-结果 `OK` 表示该项检查通过；`FAIL` 表示明确失败；`WARN` 表示需要进一步验证；`SKIP` 表示没配置或无法自动验证。没有 Key、动态凭据/OAuth 和不提供 `/models` 的代理均不会被误报为模型调用已通过。Harness 有多个供应商时逐个检查 Web profile 中的供应商。
+- 运行时文件是否齐全（`node.exe`、`@deepseek-ai/dsh/lib/bin.js`）
+- U 盘文件系统类型（FAT32 会提示转为 exFAT/NTFS）
+- 缓存目录、运行锁、未完成的事务、最近一次退出原因
+- `RUNTIME-SHA256.json` 校验（菜单内默认开启）
+- Windows 上额外运行一次 `dsh --version` 探针
 
-API 检查只发起模型列表 GET，不发推理请求，不发送工作区或会话。禁用重定向，不将 Key、原始响应或终端输出存入诊断文件。模型列表成功也不代表余额、目标模型权限或实际推理已经验证。诊断不执行配置里的凭据助手；含 URL 查询参数的特殊供应商需在 Agent 内检查。
+状态含义：`OK` 通过；`FAIL` 明确失败；`WARN` 需进一步确认；`SKIP` 当前环境无法自动验证。
 
-启动失败时保留终端原始输出，给出退出码和可识别的失败类别；简要结果写到本机 `logs/last-run.json`。交互式 Agent 保留真实终端，终端未被重定向时不会为了采集错误而破坏它的界面。未识别的子进程错误需要结合终端原始报错判断。
+命令行等价入口：
 
-命令行也可使用：
-
-```bash
-./platforms/darwin-arm64/node lib/doctor.mjs --all-platforms --verify-hashes
-./platforms/darwin-arm64/node lib/doctor.mjs --online
+```powershell
+.\platforms\win32-x64\node.exe lib\doctor.mjs --verify-hashes
+.\platforms\win32-x64\node.exe lib\doctor.mjs --no-probe
 ```
 
-Windows 把前面的 Node 换成 `platforms\win32-x64\node.exe`。真实在线检查需要你已经保存有效的供应商配置。
+诊断不联网、不发起模型推理、不输出 Key。
 
 ## 备份和恢复
 
-1. 先退出由本目录启动的所有 Agent 和 CC Switch，包括后台/托盘实例。不要同时在两台机器运行同一份数据。
-2. 维护 **4** 备份 `config/` 和 `data/` 中的持久数据，包括直连和 CC 模式的配置、Key、数据库和会话。排除本机缓存、U 盘缓存、运行锁，以及 Codex 的临时目录和日志。
-3. 每份备份都是普通目录，带 SHA256 清单。写到临时目录、校验完成后才成为正式备份；不需要压缩。配置里指向盘外的链接会使备份停止，不跟随链接复制外部文件。
-4. 维护 **5** 查看备份，选择后输入 `RESTORE`。先验证备份，再自动创建 `before-restore` 备份，随后恢复配置和会话。不会覆盖 `workspace/`；恢复到较早备份会移除之后新增的持久数据，移除前的数据保留在恢复前备份中。
-5. 恢复后，如果盘符或路径变了，先用本 Demo 的 CC Switch 启动器刷新配置目录，再启动对应 Agent。
-
-备份中包含原有 Key 和会话，按私密数据保存。备份位于同一支 U 盘，可用于配置误改恢复；要防 U 盘丢失或损坏，需要另行把备份复制到其他盘。
+1. 先退出由本目录启动的所有 Harness 窗口（维护锁会阻止运行中备份）。
+2. 维护 `2` 备份 `config/`（若存在）与 `data/` 中的持久数据；排除本机缓存、U 盘缓存、运行锁，以及任意 `tmp`/`cache`/`logs`/`node_modules` 目录（这些目录可能含 Windows 联结点，不会被复制）。
+3. 每份备份是普通目录 + SHA256 清单，先写临时目录、校验通过后才成为正式备份，不压缩、不跟随外部链接。
+4. 维护 `3` 选择备份并输入 `RESTORE`：先验证备份，自动创建 `before-restore` 备份，再替换配置和会话。`workspace/` 不会被覆盖。
+5. 备份内含原有 Key 与会话，按私密数据保管；防丢盘需另存到别的盘。
 
 ## 更新
 
-维护 **6** 接受一个**已经准备好、已经解压的完整新版 Demo 目录**，不是单独的 npm 包或 CC Switch 安装包，也不是 GitHub 源码目录。此功能不自动下载更新。
+维护 `4` 接受一个**已准备好、已解压的完整新版目录**（不是 npm 包，也不是 GitHub 源码目录），不会自动下载。
 
-1. 将完整新版放到与当前目录彼此独立的位置，不要放进当前目录里面。
-2. 退出当前目录启动的所有 Agent 和 CC Switch。
-3. 选择维护 **6**，输入新版目录，再输入 `UPDATE`。
-4. 检查新版双平台布局、必需文件和运行时校验清单，自动创建 `before-update` 的配置与会话备份；复制到暂存目录后再次校验运行时。
-5. 替换程序、启动脚本和说明文件，保留当前 `config/`、`data/`、`workspace/`，不导入新版包自带的数据。旧程序保存在输出的 `previous` 路径，当前进程退出后重新打开主菜单。
+1. 新版目录必须与当前目录彼此独立，且包含 `platforms/win32-x64`、`RUNTIME-SHA256.json`、`lib/`、`dsh.bat`、`dsh.ps1`。
+2. 退出本目录启动的所有 Harness 窗口，输入 `UPDATE`。
+3. 流程：校验新版布局与 SHA256 → 创建 `before-update` 备份 → 复制到暂存目录并再次校验 → 事务式替换 → 旧程序保留在输出的 `previous` 路径。
+4. 任一步失败都不会替换旧程序；替换阶段异常会自动回退。
 
-复制或校验失败时不替换旧程序；替换阶段发生可捕获错误时会回退。更新要同时容纳当前程序、新版暂存和备份，预留至少一整份程序的额外空间，备份较大时还需更多。
-
-发生断电、强制终止等中断时，先确认所有电脑上的程序都退出，再用维护 **8** 清理遗留运行记录，然后用维护 **7** 按事务记录回退中断操作。未完成操作处理前不要启动 Agent。事务记录和旧程序不会自动删除，确认新版本正常且不需要回退后再手动清理相应目录。
-
-校验用于检测文件损坏，不证明新版来源可信。CC Switch 便携覆盖依赖固定版本的测试接口，不能直接在其界面内升级；新版包需继续验证目录隔离和 API 兼容。
+发生断电或强制终止后，先确认程序已退出，再用维护 `5` 回退未完成操作，或用维护 `6` 清理遗留运行记录。旧程序目录不会自动删除，确认新版本正常后手动清理。
 
 ## 验证边界
 
-新增缓存、备份、恢复、更新回退、API 认证错误/超时/重定向处理均有临时目录或本地模拟接口测试。实际打包的三个 Mac Agent 做了离线配置集成验证。Windows 维护脚本、真实 U 盘/exFAT、真实 DeepSeek API 和新版本迁移仍需对应环境实测；没有把模拟测试当成这些环境已通过。
-
-TOML 诊断使用随 `lib/vendor/smol-toml/` 附带的 smol-toml 1.4.2 解析器，保留许可证；其 npm 包 SHA512 在纳入时已核对。YAML 解析使用随两个平台准备好的 `yaml` 依赖。
+缓存、锁、备份/恢复/更新的成功与失败路径均有临时目录测试；Windows 实机运行、真实 U 盘（exFAT）性能和真实模型调用仍需对应环境验证。

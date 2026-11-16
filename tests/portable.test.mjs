@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { portableCache, recordRun } from '../lib/portable-cache.mjs';
-import { runtimeEnv } from '../lib/agent-plan.mjs';
+import { runtimeEnv, buildAgentPlan } from '../lib/agent-plan.mjs';
 import { acquireLease, maintenanceLock, clearForeignRecords } from '../lib/state-lock.mjs';
 import { requiredFiles, runtimeChecks, failureReason } from '../lib/preflight.mjs';
 import { createBackup, verifyBackup, restoreBackup, updateFromFolder, recoverTransactions, listBackups, digest } from '../lib/maintenance.mjs';
@@ -20,17 +20,16 @@ function put(root, file, value) {
 }
 function seed(root) {
   put(root, 'config/settings.json', '{"model":"keep-this-model"}\r\n');
-  put(root, 'data/cc-switch/agents/claude/settings.json', '{"key":"test-secret-only"}\r\n');
-  put(root, 'data/cc-switch/agents/codex/sessions/session.jsonl', '{"conversation":"keep bytes"}\n');
-  put(root, 'data/cc-switch/controller-home/.cc-switch/cc-switch.db', Buffer.from([0, 255, 1, 2]));
+  put(root, 'data/harness/profiles/web/cordis.patch.yml', 'keep: exact-bytes\r\n');
+  put(root, 'data/harness/agents/sessions/session.jsonl', '{"conversation":"keep bytes"}\n');
+  put(root, 'data/harness/.credentials.yaml', Buffer.from([0, 255, 1, 2]));
   put(root, 'workspace/user-work.txt', 'never replace workspace');
 }
 function runtime(root, marker) {
-  for (const platform of ['darwin-arm64', 'win32-x64']) for (const file of requiredFiles(platform)) fs.chmodSync(put(root, `platforms/${platform}/${file}`, marker), 0o755);
-  for (const file of ['lib/maintenance.mjs', 'lib/launch.mjs', 'lib/doctor.mjs', 'Mac-Start.command', 'Windows-Start.bat']) put(root, file, marker);
-  put(root, 'BUILD-INFO.json', JSON.stringify({ platforms: ['darwin-arm64', 'win32-x64'] }));
-  const names = ['platforms/darwin-arm64/node', 'platforms/win32-x64/node.exe'];
-  put(root, 'RUNTIME-SHA256.json', JSON.stringify(Object.fromEntries(names.map(n => [n, digest(path.join(root, n))]))));
+  for (const file of requiredFiles('win32-x64')) fs.chmodSync(put(root, 'platforms/win32-x64/' + file, marker), 0o755);
+  for (const file of ['lib/maintenance.mjs', 'lib/launch.mjs', 'lib/doctor.mjs', 'dsh.bat', 'dsh.ps1', 'Windows-Maintain.bat']) put(root, file, marker);
+  put(root, 'BUILD-INFO.json', JSON.stringify({ platforms: ['win32-x64'] }));
+  put(root, 'RUNTIME-SHA256.json', JSON.stringify(Object.fromEntries(['platforms/win32-x64/node.exe'].map(n => [n, digest(path.join(root, n))]))));
 }
 
 test('cache stays on host, survives a USB move, and keeps config/session bytes on USB', t => {
@@ -42,8 +41,9 @@ test('cache stays on host, survives a USB move, and keeps config/session bytes o
   const second = portableCache(moved, { parentEnv: env }); assert.equal(second.root, first.root);
   const actualEnv = runtimeEnv(moved, { ...env, DEEPSEEK_API_KEY: 'inherited-secret' }, process.execPath, 'darwin');
   assert.equal(actualEnv.npm_config_cache, path.join(first.root, 'npm'));
-  assert.equal(actualEnv.TMPDIR, path.join(first.root, 'tmp')); assert.equal(actualEnv.DEEPSEEK_API_KEY, undefined);
-  assert.equal(fs.readFileSync(path.join(moved, 'data/cc-switch/agents/claude/settings.json'), 'utf8'), '{"key":"test-secret-only"}\r\n');
+  assert.equal(actualEnv.TMPDIR, path.join(first.root, 'tmp'));
+  assert.equal(actualEnv.DEEPSEEK_API_KEY, 'inherited-secret', 'provider settings are left to DSH defaults');
+  assert.equal(fs.readFileSync(path.join(moved, 'data/harness/profiles/web/cordis.patch.yml'), 'utf8'), 'keep: exact-bytes\r\n');
 });
 test('unwritable host cache falls back to USB without moving sessions', t => {
   const { root, base } = fixture(t), blocked = put(base, 'file-not-directory', 'x');
@@ -53,19 +53,19 @@ test('unwritable host cache falls back to USB without moving sessions', t => {
 test('backup/restore preserves exact bytes, excludes caches and temporary links, and backs up the replaced state', t => {
   const { root } = fixture(t); seed(root);
   put(root, 'data/npm-cache/large-file', 'disposable'); put(root, 'data/cache/large-file', 'disposable');
-  const temp = put(root, 'data/cc-switch/agents/codex/tmp/target', 'temporary');
+  const temp = put(root, 'data/harness/tmp/target', 'temporary');
   fs.symlinkSync(temp, path.join(path.dirname(temp), 'apply_patch'));
   const backup = createBackup(root), manifest = verifyBackup(backup);
   assert.ok(!manifest.entries.some(e => /npm-cache|\/cache\/|\/tmp\//.test(e.path)));
-  put(root, 'data/cc-switch/agents/codex/sessions/session.jsonl', 'changed session');
-  put(root, 'data/claude/extra.txt', 'created after snapshot');
+  put(root, 'data/harness/agents/sessions/session.jsonl', 'changed session');
+  put(root, 'data/harness/extra.txt', 'created after snapshot');
   put(root, 'config/settings.json', '{"model":"changed"}');
   const result = restoreBackup(root, path.basename(backup));
   verifyBackup(result.before);
-  assert.equal(fs.readFileSync(path.join(root, 'data/cc-switch/agents/codex/sessions/session.jsonl'), 'utf8'), '{"conversation":"keep bytes"}\n');
-  assert.deepEqual(fs.readFileSync(path.join(root, 'data/cc-switch/controller-home/.cc-switch/cc-switch.db')), Buffer.from([0, 255, 1, 2]));
-  assert.ok(!fs.existsSync(path.join(root, 'data/claude/extra.txt')));
-  assert.equal(fs.readFileSync(path.join(result.before, 'payload/data/cc-switch/agents/codex/sessions/session.jsonl'), 'utf8'), 'changed session');
+  assert.equal(fs.readFileSync(path.join(root, 'data/harness/agents/sessions/session.jsonl'), 'utf8'), '{"conversation":"keep bytes"}\n');
+  assert.deepEqual(fs.readFileSync(path.join(root, 'data/harness/.credentials.yaml')), Buffer.from([0, 255, 1, 2]));
+  assert.ok(!fs.existsSync(path.join(root, 'data/harness/extra.txt')));
+  assert.equal(fs.readFileSync(path.join(result.before, 'payload/data/harness/agents/sessions/session.jsonl'), 'utf8'), 'changed session');
   assert.equal(fs.readFileSync(path.join(root, 'workspace/user-work.txt'), 'utf8'), 'never replace workspace');
 });
 test('corrupt snapshots, traversal manifests and external symlinks are rejected before any restore', t => {
@@ -82,12 +82,12 @@ test('corrupt snapshots, traversal manifests and external symlinks are rejected 
 });
 test('running Agent and exclusive maintenance locks prevent inconsistent snapshots or concurrent launches', t => {
   const { root } = fixture(t); seed(root);
-  const lease = acquireLease(root, 'codex');
+  const lease = acquireLease(root, 'dsh');
   assert.throws(() => createBackup(root), /还.*运行/);
   assert.throws(() => clearForeignRecords(root), /活动进程/);
   lease.release();
   const unlock = maintenanceLock(root);
-  assert.throws(() => acquireLease(root, 'claude'), /正在进行/);
+  assert.throws(() => acquireLease(root, 'dsh'), /正在进行/);
   unlock(); assert.doesNotThrow(() => createBackup(root));
 });
 test('failed restore rolls back data; interrupted operations can be recovered from their journal', t => {
@@ -101,7 +101,7 @@ test('failed restore rolls back data; interrupted operations can be recovered fr
   put(root, 'config/settings.json', 'half installed');
   put(txn, 'journal.json', JSON.stringify({ state: 'installing', entries: [{ name: 'config', hadOld: true }] }));
   assert.throws(() => createBackup(root), /未完成/);
-  assert.throws(() => acquireLease(root, 'codex'), /未完成/);
+  assert.throws(() => acquireLease(root, 'dsh'), /未完成/);
   recoverTransactions(root);
   assert.equal(fs.readFileSync(path.join(root, 'config/settings.json'), 'utf8'), 'newer current state');
 });
@@ -127,20 +127,24 @@ test('bad candidate and failed program replacement leave the original runtime us
   fs.symlinkSync(put(base, 'external-update-file', 'outside'), path.join(source, 'tests'));
   assert.throws(() => updateFromFolder(root, source), /链接/);
   assert.equal(fs.readFileSync(path.join(root, 'lib/launch.mjs'), 'utf8'), 'old runtime');
-  assert.deepEqual(fs.readdirSync(path.join(root, 'backups/.transactions')), [], 'failed staging must not leave partial multi-GB copies');
+  assert.deepEqual(fs.readdirSync(path.join(root, 'backups/.transactions')), [], 'failed staging must not leave partial copies');
   fs.unlinkSync(path.join(source, 'tests'));
   assert.throws(() => updateFromFolder(root, source, { injectFailure: name => { if (name === 'platforms') throw new Error('simulated replace failure'); } }), /simulated replace failure/);
-  assert.equal(fs.readFileSync(path.join(root, 'platforms/darwin-arm64/node'), 'utf8'), 'old runtime');
+  assert.equal(fs.readFileSync(path.join(root, 'platforms/win32-x64/node.exe'), 'utf8'), 'old runtime');
   assert.equal(fs.readFileSync(path.join(root, 'lib/launch.mjs'), 'utf8'), 'old runtime');
 });
-test('preflight rejects unsupported architecture and incomplete dependencies; failure logs contain only classified reasons', t => {
+test('preflight rejects unsupported platforms and missing files', t => {
+  const { root } = fixture(t); runtime(root, 'runtime');
+  assert.equal(runtimeChecks(root, { platform: 'darwin-arm64' })[0].status, 'FAIL');
+  assert.ok(runtimeChecks(root, { platform: 'win32-x64' }).every(row => row.status !== 'FAIL'));
+  fs.unlinkSync(path.join(root, 'platforms/win32-x64/node_modules/@deepseek-ai/dsh/lib/bin.js'));
+  assert.ok(runtimeChecks(root, { platform: 'win32-x64' }).some(row => row.status === 'FAIL'));
+});
+test('failure logs contain only classified reasons, never raw stderr or credentials', t => {
   const { root, base } = fixture(t); runtime(root, 'runtime');
-  assert.equal(runtimeChecks(root, { platform: 'darwin-x64' })[0].status, 'FAIL');
-  fs.unlinkSync(path.join(root, 'platforms/win32-x64/git/bin/bash.exe'));
-  assert.ok(runtimeChecks(root, { platform: 'win32-x64', agent: 'claude' }).some(r => r.status === 'FAIL'));
   const cache = portableCache(root, { parentEnv: { AI_USB_HOST_CACHE: path.join(base, 'host') } });
   const reason = failureReason({ code: 1, stderr: '401 key=do-not-log-this-secret' });
-  recordRun(cache.root, { program: 'codex', status: 'failed', code: 1, reason });
+  recordRun(cache.root, { program: 'harness', status: 'failed', code: 1, reason });
   const log = fs.readFileSync(path.join(cache.root, 'logs/last-run.json'), 'utf8');
   assert.ok(!log.includes('do-not-log-this-secret')); assert.match(log, /认证/);
 });

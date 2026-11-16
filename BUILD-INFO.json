@@ -1,46 +1,33 @@
 {
   "prepared": "2026-10-31",
+  "trimmed": "2026-11-15",
   "platforms": [
-    "darwin-arm64",
     "win32-x64"
+  ],
+  "agent": "deepseek-harness",
+  "entry": "dsh.bat",
+  "removed": [
+    "darwin-arm64 runtime",
+    "codex",
+    "claude-code",
+    "cc-switch",
+    "portable-git-windows"
   ],
   "versions": {
     "node": "24.17.0",
-    "codex": "0.166.0",
-    "claude-code": "2.1.316",
-    "deepseek-harness": "0.2.1-rc.5",
-    "portable-git-windows": "2.56.0.4",
-    "cc-switch": "4.0.22"
+    "deepseek-harness": "0.2.1-rc.5"
   },
+  "api_key_required_at_launch": false,
   "windows_execution_tested": false,
   "real_api_tested": false,
-  "package_locks": {
-    "darwin-arm64": "b7bda3e08ee7e84d05bdfe6c9b6bf1071e12f67d02de0632007381b1cb17b52e",
-    "win32-x64": "111694331043a12cb135eee8586a9f7ba45c21010ec279f641a2559ecc653b78"
-  },
-  "cc_switch": {
-    "release": "https://github.com/farion1231/cc-switch/releases/tag/v4.0.22",
-    "mac_archive_sha256": "cbd141a63ea53d2d72d0a28cacb898298238b0d6540542af91d8ba9c53f22d31",
-    "windows_archive_sha256": "f6ab1023d8ba3b72505c5e1267a85d69e8e8a10f35c235d39395cb67ad81f875",
-    "data_root": "data/cc-switch",
-    "home_override": "CC_SWITCH_TEST_HOME (upstream test/debug override; pinned demo integration)",
-    "gui_execution_tested": false,
-    "note": "Host CC Switch already running; GUI was not launched to avoid single-instance redirection.",
-    "offline_mac_agent_integration_tested": true,
-    "configuration_tests_passed": 8
-  },
   "portable_maintenance": {
     "host_cache": true,
     "stable_portable_id": true,
-    "unified_diagnostics": true,
-    "cc_saved_api_checks": true,
     "configuration_and_session_backups": true,
     "backup_before_restore_and_update": true,
     "offline_update_from_prepared_folder": true,
-    "tests_passed": 27,
-    "mac_agent_integration_tested": true,
+    "tests_passed": 14,
     "windows_execution_tested": false,
-    "real_api_tested": false,
-    "note": "Windows maintenance uses a hash-verified local Node copy; Windows and real USB/exFAT still require hardware validation."
+    "note": "Single-platform Windows x64 build; the Harness API key stays in the app's own default configuration."
   }
 }
