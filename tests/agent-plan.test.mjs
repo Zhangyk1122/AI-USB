@@ -27,6 +27,9 @@ test('plan keeps the portable DSH home, injects no API key and defaults to web',
   assert.equal(plan.args.at(-1), 'web');
   assert.ok(plan.args[0].endsWith(path.join('node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')));
   assert.ok(plan.env.PATH.split(';')[0] === path.dirname(node));
+  assert.ok(plan.env.PATH.split(';').includes(path.join(root, 'platforms', 'win32-x64', 'pnpm')));
+  assert.ok(plan.env.PNPM_HOME.endsWith('pnpm-home'));
+  assert.ok(plan.env.npm_config_store_dir.endsWith('pnpm-store'));
   assert.ok(fs.existsSync(path.join(root, 'data', 'harness', 'agents')));
 });
 

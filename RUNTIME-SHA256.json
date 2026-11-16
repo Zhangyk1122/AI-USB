@@ -1,3 +1,4 @@
 {
-  "platforms/win32-x64/node.exe": "c6335d08331c23d68b9f2b18adb102002d76ef150b47248e954c507e0d033664"
+  "platforms/win32-x64/node.exe": "c6335d08331c23d68b9f2b18adb102002d76ef150b47248e954c507e0d033664",
+  "platforms/win32-x64/pnpm/pnpm.exe": "f47deff368df05671564b2a1a340100f265a2cb2d9fe6158f708d1337348fbc4"
 }

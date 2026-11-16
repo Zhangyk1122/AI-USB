@@ -32,7 +32,7 @@ $env:AI_USB_WORKSPACE = 'E:\your-project'
 | `使用说明.txt` | 纯文本入门说明，U 盘场景直接打开看 |
 | `Windows-Maintain.bat` / `.ps1` | 维护入口：诊断、备份、恢复、更新 |
 | `lib/` | 启动器与维护功能（Node ESM 源码） |
-| `platforms/win32-x64/` | 打包的 Node 24.17.0 与 DeepSeek Harness 0.2.1-rc.5 |
+| `platforms/win32-x64/` | 打包的 Node 24.17.0、DeepSeek Harness 0.2.1-rc.5，以及 pnpm 12.21.0（供插件安装） |
 | `data/harness/` | Harness 的配置、凭据和会话（随盘保存） |
 | `data/.portable-id` | 便携标识，用于在本机复用缓存 |
 | `workspace/` | 默认工作目录 |
@@ -46,6 +46,29 @@ $env:AI_USB_WORKSPACE = 'E:\your-project'
 - 启动器不设置任何供应商变量；宿主机已有的 `DEEPSEEK_API_KEY` 等变量会按 Harness 自身默认行为处理。
 - 简要运行结果写在本机缓存的 `logs/last-run.json`，不记录 Key、会话内容或模型响应。
 
+## 换端口 / 局域网访问
+
+`web` 是默认 profile，它的参数必须写在 `web` **后面**——写在前面会被 dsh 界面层当作“缺少 profile”（`error: --profile <name> is required`）：
+
+```powershell
+dsh web --port 8080                 # 换端口
+dsh web --no-open                   # 不自动打开浏览器
+dsh web --host 192.168.1.50 --port 8080 --trusted-host 192.168.1.50:8080
+                                    # 绑定局域网地址，供其它设备访问
+```
+
+`--host` 只接受本机某个具体网卡地址，不接受 `0.0.0.0` 这类通配地址。用局域网地址访问时，
+Windows 防火墙需要放行该端口，并且可能要给 `/api` 追加 `--trusted-host`。
+
+## 插件
+
+Web 界面的「设置 → 插件管理」里有两类操作：
+
+- **开关随包插件**：12 个 experimental 插件（会话搜索、会话标题、内置终端、语音输入、自动评审、Agent 团队等）已经装在 `node_modules` 里，只是默认关闭。开关不需要网络，结果写进 `data/harness/profiles/<profile>/package.json`，随 U 盘保存。
+- **安装第三方插件**：需要 pnpm。本包已内置 `platforms/win32-x64/pnpm/pnpm.exe`（12.21.0）并自动加进 PATH，目标电脑不需要另装。pnpm 的 store 与全局 bin 指向本机缓存 `%LOCALAPPDATA%\AI-USB-Demo\<ID>\pnpm-store`、`pnpm-home`，不写 U 盘。
+
+experimental 插件由上游标注为不稳定；升级 DSH 版本后建议逐个确认能否加载，开关前先做一次备份。
+
 ## 维护
 
 双击 `Windows-Maintain.bat`，或在终端运行：
@@ -54,7 +77,7 @@ $env:AI_USB_WORKSPACE = 'E:\your-project'
 & '.\Windows-Maintain.bat'
 ```
 
-菜单提供：统一离线诊断、备份、查看/恢复备份、从完整新版目录更新、恢复中断操作、清理遗留运行记录。细节见 [MAINTENANCE.md](MAINTENANCE.md)。
+菜单提供：统一离线诊断、备份、查看/恢复备份、从完整新版目录更新、恢复中断操作、清理遗留运行记录、同步 BUILD-INFO 版本号。细节见 [MAINTENANCE.md](MAINTENANCE.md)。
 
 ## 兼容范围
 
@@ -75,6 +98,8 @@ cd platforms\win32-x64
 # 2) 安装唯一的 Agent
 npm install @deepseek-ai/dsh@0.2.1-rc.5 --os=win32 --cpu=x64
 # 3) 需要 Agent 执行 git 命令时，另行安装系统 Git 并加入 PATH
+# 4) pnpm 为可选：取 pnpm 的 GitHub Release 资产 pnpm-win32-x64.zip，
+#    解压到 platforms\win32-x64\pnpm\（含 pnpm.exe 与 dist\）
 ```
 
 校验哈希见 [RUNTIME-SHA256.json](RUNTIME-SHA256.json)。此前移除的组件可从上游恢复：Codex（`@openai/codex`）、Claude Code（`@anthropic-ai/claude-code`）、[CC Switch v4.0.22](https://github.com/farion1231/cc-switch/releases/tag/v4.0.22)、[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)。
@@ -84,7 +109,7 @@ npm install @deepseek-ai/dsh@0.2.1-rc.5 --os=win32 --cpu=x64
 单元测试只需要 Node 24，不依赖 U 盘运行时的平台：
 
 ```bash
-node --test tests/*.test.mjs          # 14 项，含 DSH 启动计划、缓存、锁、备份/恢复/更新事务
+node --test tests/*.test.mjs          # 含 DSH 启动计划、缓存、锁、备份/恢复/更新事务、版本检测
 node lib/doctor.mjs --verify-hashes   # 文件完整性与 SHA256；Windows 上会附带 DSH 版本探针
 ```
 

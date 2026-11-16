@@ -7,12 +7,13 @@
 - 只保留 **DeepSeek Harness**（`@deepseek-ai/dsh` 0.2.1-rc.5）
 - 只保留 **Windows x64** 运行时与启动脚本
 - 删除 CC Switch 及其全部便携隔离逻辑、Codex 的本地 Responses 适配器、API 诊断入口
+- 内置 pnpm 12.21.0（`platforms/win32-x64/pnpm/`），并把 pnpm store 与全局 bin 重定向到本机缓存，支持在 Web 插件管理里安装第三方插件
 - 启动时**不再索取注入 API Key**，Harness 使用自身默认配置
 
 ## 已在本机（macOS）验证
 
 - 目录结构与文件级检查通过：`platforms/win32-x64/node.exe`、`@deepseek-ai/dsh/lib/bin.js` 存在。
-- 单元测试 **14 项全部通过**（Node 24.17.0）：
+- 单元测试 **19 项全部通过**（Node 24.17.0）：
   - DSH 启动计划：`DSH_HOME`/`DSH_AGENTS_HOME` 指向 `data/harness`、默认参数为 `web`、不注入任何 Key、非 Windows 主机被拒绝并给出可操作提示
   - 本机缓存命中/移动目录复用/不可写回退
   - 锁：运行中禁止备份、维护互斥、遗留记录清理

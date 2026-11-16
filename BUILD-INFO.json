@@ -15,7 +15,8 @@
   ],
   "versions": {
     "node": "24.17.0",
-    "deepseek-harness": "0.2.1-rc.5"
+    "deepseek-harness": "0.2.1-rc.5",
+    "pnpm": "12.21.0"
   },
   "api_key_required_at_launch": false,
   "windows_execution_tested": false,
@@ -26,7 +27,7 @@
     "configuration_and_session_backups": true,
     "backup_before_restore_and_update": true,
     "offline_update_from_prepared_folder": true,
-    "tests_passed": 14,
+    "tests_passed": 19,
     "windows_execution_tested": false,
     "note": "Single-platform Windows x64 build; the Harness API key stays in the app's own default configuration."
   }
