@@ -77,7 +77,9 @@ experimental 插件由上游标注为不稳定；升级 DSH 版本后建议逐�
 & '.\Windows-Maintain.bat'
 ```
 
-菜单提供：统一离线诊断、备份、查看/恢复备份、从完整新版目录更新、恢复中断操作、清理遗留运行记录、同步 BUILD-INFO 版本号。细节见 [MAINTENANCE.md](MAINTENANCE.md)。
+菜单提供：统一离线诊断、备份、查看/恢复备份、从完整新版目录更新、恢复中断操作、清理遗留运行记录、手动同步版本号。细节见 [MAINTENANCE.md](MAINTENANCE.md)。
+
+`BUILD-INFO.json` 里的版本号**在每次启动时自动同步**（从 `node.exe` 和 dsh 的 `package.json` 读取），不需要手动维护；菜单 7 只是手动重跑。打包新版时用 `node lib/seal.mjs` 一次生成 `RUNTIME-SHA256.json`、版本号和 `trimmed` 日期。
 
 ## 兼容范围
 

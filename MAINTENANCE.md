@@ -27,7 +27,7 @@
 - 随包 pnpm 是否可用（可选；缺失只给 WARN，此时插件管理只能开关随包插件）
 - 缓存目录、运行锁、未完成的事务、最近一次退出原因
 - `RUNTIME-SHA256.json` 校验（菜单内默认开启）
-- BUILD-INFO 记录的版本与运行时实际版本是否一致（不一致给 WARN，并提示 `node lib/version.mjs --write`）
+- BUILD-INFO 记录的版本与运行时实际版本是否一致（启动时会自动同步，这里用于复核）
 - Windows 上额外运行一次 `dsh --version` 探针
 
 状态含义：`OK` 通过；`FAIL` 明确失败；`WARN` 需进一步确认；`SKIP` 当前环境无法自动验证。
