@@ -63,7 +63,18 @@ jobs:
           else { node lib/seal.mjs }
 
       - name: Unit tests
-        run: node --test tests/*.test.mjs
+        shell: pwsh
+        run: |
+          node --test tests/*.test.mjs *> test-output.txt
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            # 失败时把关键行写进 check-run 注释，公开仓库无需登录即可读取
+            Get-Content test-output.txt | Select-String -Pattern 'not ok|AssertionError|Error:|expected|actual|✖' |
+              Select-Object -First 12 | ForEach-Object { Write-Output ('::error title=unit test::' + $_.Line) }
+            Get-Content test-output.txt -Tail 30
+            exit $code
+          }
+          Get-Content test-output.txt -Tail 6
 
       - name: Smoke test (hash check + real dsh --version)
         run: node lib/doctor.mjs --verify-hashes
