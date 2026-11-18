@@ -9,7 +9,8 @@
 | 内容 | 位置 |
 |---|---|
 | Node、DeepSeek Harness | U 盘 `platforms/win32-x64/` |
-| Harness 配置、凭据、会话 | U 盘 `data/harness/`（`DSH_HOME`、`DSH_AGENTS_HOME`） |
+| Harness 配置、凭据、会话 | U 盘 `data/harness/`
+| 插件启用清单（可选） | U 盘 `data/plugins.txt`（`DSH_HOME`、`DSH_AGENTS_HOME`） |
 | 默认工作区 | U 盘 `workspace/`，或自己指定的 `AI_USB_WORKSPACE` |
 | npm、Node 编译缓存、临时文件、简要运行诊断 | 本机 `%LOCALAPPDATA%\AI-USB-Demo\<ID>\` |
 | 配置与会话备份 | U 盘 `backups/` |

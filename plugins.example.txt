@@ -1,0 +1,16 @@
+# 想启用的随包插件，一行一个（别名或完整包名），# 后面是注释。
+#
+# 用法：把本文件复制到 data/plugins.txt，取消要启用行前面的 #，
+#       启动器会在每次启动时把它们写进 profile 的 bundle 列表（已启用的不会重复加）。
+#       放在 data/ 下的原因：data/ 在整包更新时被保留，也会进维护备份。
+#
+# 停用请用：node lib/plugins.mjs remove <名称>
+#
+# 可用别名：
+#   session-search   session-titles   terminal        voice-input
+#   cot-translation  auto-review      agent-team      plugin-market
+#   inspector        tool-worktree    badge-skill     ralph
+#
+# 示例（复制到 data/plugins.txt 后去掉行首 #）：
+# session-search
+# session-titles

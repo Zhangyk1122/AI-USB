@@ -65,6 +65,29 @@ Windows 防火墙需要放行该端口，并且可能要给 `/api` 追加 `--tru
 Web 界面的「设置 → 插件管理」里有两类操作：
 
 - **开关随包插件**：12 个 experimental 插件（会话搜索、会话标题、内置终端、语音输入、自动评审、Agent 团队等）已经装在 `node_modules` 里，只是默认关闭。开关不需要网络，结果写进 `data/harness/profiles/<profile>/package.json`，随 U 盘保存。
+- **声明式配置**：把 `plugins.example.txt` 复制成 `data/plugins.txt`，逐行写插件别名，启动器每次启动自动应用（只增不减、幂等）。也可以直接用命令行：
+
+```powershell
+node lib\plugins.mjs list                 # 查看状态
+node lib\plugins.mjs add session-search   # 启用
+node lib\plugins.mjs remove terminal      # 停用
+```
+
+| 别名 | 插件作用 |
+|---|---|
+| `session-search` | 会话全文搜索 |
+| `session-titles` | 自动生成会话标题 |
+| `terminal` | 内置终端面板 |
+| `voice-input` | 语音输入（需要麦克风） |
+| `cot-translation` | 思维链翻译 |
+| `auto-review` | 自动评审改动 |
+| `agent-team` | 多 Agent 协作 |
+| `plugin-market` | 插件市场入口（Discover） |
+| `inspector` | 检查器 / DevTools |
+| `tool-worktree` | Git worktree 工具 |
+| `badge-skill` | 徽章技能展示 |
+| `ralph` | 实验性循环执行 |
+
 - **安装第三方插件**：需要 pnpm。本包已内置 `platforms/win32-x64/pnpm/pnpm.exe`（12.21.0）并自动加进 PATH，目标电脑不需要另装。pnpm 的 store 与全局 bin 指向本机缓存 `%LOCALAPPDATA%\AI-USB-Demo\<ID>\pnpm-store`、`pnpm-home`，不写 U 盘。
 
 experimental 插件由上游标注为不稳定；升级 DSH 版本后建议逐个确认能否加载，开关前先做一次备份。
