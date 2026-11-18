@@ -1,7 +1,7 @@
 name: build-portable
 
-# 打一个 v* 标签，或手动触发，就会在 Windows runner 上构建完整便携包。
-# 标签运行会发布 Release；手动运行只上传 Actions 产物。
+# 打一个 v* 标签：构建完整包 + 相对上一版的增量包，并发布 Release。
+# 手动触发只上传 Actions 产物，不生成增量、不发 Release。
 on:
   push:
     tags: ['v*']
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -56,8 +56,11 @@ jobs:
           Invoke-WebRequest -Uri "https://github.com/pnpm/pnpm/releases/download/v$v/pnpm-win32-x64.zip" -OutFile pnpm.zip
           Expand-Archive pnpm.zip -DestinationPath platforms/win32-x64/pnpm -Force
 
-      - name: Seal integrity manifest and versions
-        run: node lib/seal.mjs
+      - name: Seal integrity manifest, versions and release tag
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/*') { node lib/seal.mjs --release $env:GITHUB_REF_NAME }
+          else { node lib/seal.mjs }
 
       - name: Unit tests
         run: node --test tests/*.test.mjs
@@ -67,6 +70,8 @@ jobs:
 
       - name: Package
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           New-Item -ItemType Directory -Force -Path workspace | Out-Null
           if (-not (Test-Path workspace/README.md)) {
@@ -88,6 +93,29 @@ jobs:
           Set-Content -Path SHA256SUMS.txt -Value "$hash  $name"
           Get-Item $name | Select-Object Name, Length
 
+          # ---- 相对上一版生成增量包 ----
+          if ($env:GITHUB_REF -like 'refs/tags/*') {
+            $prev = $null
+            try { $prev = (gh release list --limit 1 --json tagName --jq '.[0].tagName') } catch { $prev = $null }
+            if ($LASTEXITCODE -eq 0 -and $prev) {
+              Write-Host "previous release: $prev"
+              New-Item -ItemType Directory -Force -Path prev | Out-Null
+              gh release download $prev -p 'AI-USB-Demo-win32-x64.zip' -D prev --clobber
+              if (Test-Path 'prev/AI-USB-Demo-win32-x64.zip') {
+                Expand-Archive 'prev/AI-USB-Demo-win32-x64.zip' -DestinationPath 'prev/tree' -Force
+                node lib/make-delta.mjs 'prev/tree' '.' 'delta-out' $prev $env:GITHUB_REF_NAME
+                if ($LASTEXITCODE -eq 0) {
+                  Copy-Item 'delta-out/delta.json' "delta-from-$prev.json" -Force
+                  Remove-Item 'delta-out/delta.json' -Force
+                  Push-Location delta-out
+                  & $sevenZip a -tzip -mx=5 (Join-Path (Get-Location) "..\delta-from-$prev.zip") * | Out-Null
+                  Pop-Location
+                  Get-Item "delta-from-$prev.zip" | Select-Object Name, Length
+                } else { Write-Warning 'make-delta failed; publishing full package only' }
+              } else { Write-Warning 'previous release asset missing; publishing full package only' }
+            }
+          }
+
       - name: Upload artifact (manual runs)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
@@ -104,6 +132,9 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           generate_release_notes: true
+          fail_on_unmatched_files: false
           files: |
             AI-USB-Demo-win32-x64.zip
             SHA256SUMS.txt
+            delta-from-*.zip
+            delta-from-*.json

@@ -40,6 +40,14 @@ test('seal refreshes versions and the trimmed date without touching other fields
   assert.deepEqual(info.platforms, ['win32-x64']);
 });
 
+test('seal stamps the release tag for the updater', t => {
+  const root = fixture(t);
+  sealRuntime(root, { hostPlatform: 'win32', exec: fakeExec, release: 'v0.1.7', today: new Date('2026-11-18T00:00:00Z') });
+  const info = JSON.parse(fs.readFileSync(path.join(root, 'BUILD-INFO.json'), 'utf8'));
+  assert.equal(info.release, 'v0.1.7');
+  assert.equal(info.trimmed, '2026-11-18');
+});
+
 test('a sealed package is idempotent and dry-run writes nothing', t => {
   const root = fixture(t);
   sealRuntime(root, { hostPlatform: 'win32', exec: fakeExec, today: new Date('2026-11-17T00:00:00Z') });
