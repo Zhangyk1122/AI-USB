@@ -13,7 +13,7 @@
 ## 已在本机（macOS）验证
 
 - 目录结构与文件级检查通过：`platforms/win32-x64/node.exe`、`@deepseek-ai/dsh/lib/bin.js` 存在。
-- 单元测试 **35 项全部通过**（Node 24.17.0）：
+- 单元测试 **37 项全部通过**（Node 24.17.0）：
   - DSH 启动计划：`DSH_HOME`/`DSH_AGENTS_HOME` 指向 `data/harness`、默认参数为 `web`、不注入任何 Key、非 Windows 主机被拒绝并给出可操作提示
   - 本机缓存命中/移动目录复用/不可写回退
   - 锁：运行中禁止备份、维护互斥、遗留记录清理
@@ -34,3 +34,20 @@
 - 只认 Windows x64；其他平台启动会直接报错退出，而不是静默失败。
 - 不再附带 PortableGit；需要 Git 任务时由目标电脑的系统 Git 提供。
 - `platforms/` 约 950MB，不进入 Git；重建方法见 README。
+
+## 增量更新验证（2026-11-18，CI 在真实 Windows 上执行）
+
+| 版本 | CI | 产出 |
+|---|---|---|
+| v0.1.0 | 全绿 | 整包 265 MB |
+| v0.1.1 | 全绿 | 增量 v0.1.0→v0.1.1 = **40 KB**（20 个文件，仅 lib 与文档） |
+| v0.1.2 | 全绿 | 增量混入 CI 产物（SHA256SUMS.txt / test-output.txt），已修复 |
+| v0.1.3 | 全绿 | 增量 v0.1.2→v0.1.3 = **8 KB**（4 个文件） |
+
+端到端校验：把 v0.1.3 的增量包应用到 git 归档的 v0.1.2 树，应用后内容与 v0.1.3 逐字节一致，且目录里没有出现任何 CI 产物。
+
+过程中由 CI 暴露并修复的两个缺陷：
+
+1. `new URL(import.meta.url).pathname` 在 Windows 上返回 `/D:/...`，导致 `createRequire` 锚点非法、CLI 入口判断失效；改用 `fileURLToPath`。
+2. 增量清单把检出目录里的 CI 产物当成包内文件；已在 `isPackageRootFile` 中排除，并在 `applyFileDelta` 增加包外路径拒绝（写入无效路径会被记录为 skipped）。
+
