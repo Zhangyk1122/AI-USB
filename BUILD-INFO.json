@@ -27,7 +27,7 @@
     "configuration_and_session_backups": true,
     "backup_before_restore_and_update": true,
     "offline_update_from_prepared_folder": true,
-    "tests_passed": 35,
+    "tests_passed": 37,
     "windows_execution_tested": false,
     "note": "Single-platform Windows x64 build; the Harness API key stays in the app's own default configuration."
   }

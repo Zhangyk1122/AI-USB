@@ -44,6 +44,17 @@ function release(tag, assets = {}) {
   };
 }
 
+test('CI artifacts in the checkout root are never treated as package files', t => {
+  const root = fixture(t);
+  put(root, 'SHA256SUMS.txt', 'hash');
+  put(root, 'test-output.txt', 'log');
+  put(root, 'delta-from-v0.1.0.json', '{}');
+  put(root, 'README.md', 'doc');
+  const files = Object.keys(buildManifest(root).files);
+  assert.deepEqual(files.filter(name => name.includes('SHA256SUMS') || name.includes('test-output') || name.startsWith('delta-from-')), []);
+  assert.ok(files.includes('README.md'));
+});
+
 test('manifest diff classifies added, changed and deleted files', t => {
   const base = fixture(t), target = fixture(t);
   put(base, 'lib/a.mjs', 'old'); put(target, 'lib/a.mjs', 'new'); put(target, 'lib/b.mjs', 'added');
@@ -116,6 +127,17 @@ test('applying a delta updates, adds and deletes files and keeps originals for r
   assert.equal(fs.readFileSync(path.join(transaction, 'previous/lib/a.mjs'), 'utf8'), 'old-a');
   assert.equal(fs.readFileSync(path.join(transaction, 'previous/lib/old.mjs'), 'utf8'), 'old-b');
   assert.equal(JSON.parse(fs.readFileSync(path.join(transaction, 'journal.json'), 'utf8')).state, 'complete');
+});
+
+test('a delta cannot write files outside the packaged set', t => {
+  const { root, extracted, transaction, delta } = deltaFixture(t);
+  delta.files.push({ path: 'SHA256SUMS.txt', sha256: sha256File(put(extracted, 'SHA256SUMS.txt', 'ci')) });
+  delta.files.push({ path: '../escape.txt', sha256: sha256File(put(extracted, 'escape.txt', 'x')) });
+  applyFileDelta(root, extracted, delta, transaction);
+  assert.ok(!fs.existsSync(path.join(root, 'SHA256SUMS.txt')));
+  assert.ok(!fs.existsSync(path.join(root, '..', 'escape.txt')));
+  const journal = JSON.parse(fs.readFileSync(path.join(transaction, 'journal.json'), 'utf8'));
+  assert.deepEqual(journal.skipped.sort(), ['../escape.txt', 'SHA256SUMS.txt']);
 });
 
 test('a corrupted delta rolls back every file it touched', t => {
