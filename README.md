@@ -92,6 +92,70 @@ node lib\plugins.mjs remove terminal      # 停用
 
 experimental 插件由上游标注为不稳定；升级 DSH 版本后建议逐个确认能否加载，开关前先做一次备份。
 
+## 发版流程（打 tag 自动出包）
+
+标签规则：`v0.1.1`、`v0.1.2`……（`v0.1.` 固定，最后一位每发一版加一）。
+
+### 1. 需要新运行时的话，先改版本号
+
+编辑 `BUILD-INFO.json` 的 `versions`：
+
+```json
+"versions": { "node": "24.17.0", "deepseek-harness": "0.2.2-rc.3", "pnpm": "12.21.0" }
+```
+
+工作流会**按这里的版本**去 npm 和 nodejs.org 下载，不需要改 workflow 文件。
+
+### 2. 本地先验一遍
+
+```powershell
+node lib/seal.mjs                  # 重算 RUNTIME-SHA256.json、同步版本与 trimmed
+node --test tests/*.test.mjs       # 28 项
+node lib/doctor.mjs --verify-hashes
+```
+
+### 3. 提交并打标签
+
+```bash
+git add -A
+git commit -m "release v0.1.2"
+git tag v0.1.2
+git push origin main --tags
+```
+
+### 4. 等 CI（约 3 分钟）
+
+Actions → `build-portable`。全部通过后，Releases 里会出现：
+
+```
+AI-USB-Demo-win32-x64.zip   ≈ 265 MB
+SHA256SUMS.txt
+```
+
+### 5. 下载并核对
+
+```powershell
+Get-FileHash .\AI-USB-Demo-win32-x64.zip -Algorithm SHA256
+# 与 SHA256SUMS.txt 里的值比对
+```
+
+### 6. 更新 U 盘
+
+解压 zip，**只覆盖程序文件**（`platforms/`、`lib/`、`dsh.bat`、`Windows-*.ps1`、文档），
+**不要覆盖 `data/`** —— 那里是你的 Key、配置和会话。
+
+### 7. 回滚
+
+下载上一个 tag 的 zip 覆盖即可；`data/` 不受影响。
+
+### 常见问题
+
+| 现象 | 处理 |
+|---|---|
+| CI 红在某一步 | Actions 里点开该步骤看日志；本地用同一条命令复现 |
+| 想删掉打错的 tag | `git tag -d v0.1.2 && git push --delete origin v0.1.2`，Release 在网页上删 |
+| 只想手动跑一次不发 Release | Actions → Run workflow（只上传 Actions 产物） |
+
 ## 维护
 
 双击 `Windows-Maintain.bat`，或在终端运行：
