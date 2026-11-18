@@ -15,6 +15,8 @@ function fixture(t) {
   const root = path.join(base, 'USB folder'); fs.mkdirSync(root);
   return { base, root };
 }
+// Windows CI may forbid symlink creation without Developer Mode; such cases skip the link assertions.
+function symlink(link, target) { try { fs.symlinkSync(target, link); return true; } catch { return false; } }
 function put(root, file, value) {
   const full = path.join(root, file); fs.mkdirSync(path.dirname(full), { recursive: true }); fs.writeFileSync(full, value); return full;
 }
@@ -54,7 +56,7 @@ test('backup/restore preserves exact bytes, excludes caches and temporary links,
   const { root } = fixture(t); seed(root);
   put(root, 'data/npm-cache/large-file', 'disposable'); put(root, 'data/cache/large-file', 'disposable');
   const temp = put(root, 'data/harness/tmp/target', 'temporary');
-  fs.symlinkSync(temp, path.join(path.dirname(temp), 'apply_patch'));
+  const linked = symlink(path.join(path.dirname(temp), 'apply_patch'), temp);
   const backup = createBackup(root), manifest = verifyBackup(backup);
   assert.ok(!manifest.entries.some(e => /npm-cache|\/cache\/|\/tmp\//.test(e.path)));
   put(root, 'data/harness/agents/sessions/session.jsonl', 'changed session');
@@ -77,8 +79,9 @@ test('corrupt snapshots, traversal manifests and external symlinks are rejected 
   const second = createBackup(root), file = path.join(second, 'manifest.json');
   const manifest = JSON.parse(fs.readFileSync(file)); manifest.entries.push({ path: '../../outside', size: 0 }); fs.writeFileSync(file, JSON.stringify(manifest));
   assert.throws(() => verifyBackup(second), /非法路径/);
-  const target = put(base, 'external-secret', 'secret'); fs.symlinkSync(target, path.join(root, 'data/secret-link'));
-  assert.throws(() => createBackup(root), /链接/);
+  const target = put(base, 'external-secret', 'secret');
+  if (symlink(path.join(root, 'data/secret-link'), target)) assert.throws(() => createBackup(root), /链接/);
+  else t.diagnostic('跳过外部链接断言：当前系统不允许创建符号链接');
 });
 test('running Agent and exclusive maintenance locks prevent inconsistent snapshots or concurrent launches', t => {
   const { root } = fixture(t); seed(root);
@@ -124,11 +127,12 @@ test('bad candidate and failed program replacement leave the original runtime us
   assert.throws(() => updateFromFolder(root, source), /校验失败/);
   assert.equal(listBackups(root).length, 0);
   runtime(source, 'new runtime');
-  fs.symlinkSync(put(base, 'external-update-file', 'outside'), path.join(source, 'tests'));
-  assert.throws(() => updateFromFolder(root, source), /链接/);
+  const linkedSource = symlink(path.join(source, 'tests'), put(base, 'external-update-file', 'outside'));
+  if (linkedSource) assert.throws(() => updateFromFolder(root, source), /链接/);
+  else t.diagnostic('跳过外部链接断言：当前系统不允许创建符号链接');
   assert.equal(fs.readFileSync(path.join(root, 'lib/launch.mjs'), 'utf8'), 'old runtime');
   assert.deepEqual(fs.readdirSync(path.join(root, 'backups/.transactions')), [], 'failed staging must not leave partial copies');
-  fs.unlinkSync(path.join(source, 'tests'));
+  if (linkedSource) fs.unlinkSync(path.join(source, 'tests'));
   assert.throws(() => updateFromFolder(root, source, { injectFailure: name => { if (name === 'platforms') throw new Error('simulated replace failure'); } }), /simulated replace failure/);
   assert.equal(fs.readFileSync(path.join(root, 'platforms/win32-x64/node.exe'), 'utf8'), 'old runtime');
   assert.equal(fs.readFileSync(path.join(root, 'lib/launch.mjs'), 'utf8'), 'old runtime');
