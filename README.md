@@ -8,13 +8,17 @@
 
 首次启动**不需要 API Key**：启动器不注入、不索取、不保存 Key，Harness 使用自身默认配置；打开 Web 界面后在模型/供应商设置里自行添加即可。
 
-## 快速开始
+## 快速开始（首次部署）
 
-1. 把**整个** `AI-USB-Demo` 目录复制到 U 盘（不要只复制启动脚本）。
-2. 双击 `dsh.bat`，或在该目录打开终端执行 `dsh`（PowerShell 里写 `.\dsh`）。
-   `Windows-Start.bat` 保留为兼容别名，效果完全相同。
-3. 终端会打印 Web 访问地址（形如 `http://127.0.0.1:端口`），用系统浏览器打开即可使用。
-4. 需要模型时，在 Harness 的供应商设置里填写自己的 API Key。退出 Web 界面即结束会话。
+推荐下载 Release 里的整包（约 265 MB），而不是把开发目录整个拷过去（1 GB，且没有版本标记，之后更新会退化成整包）：
+
+1. 打开 [Releases](https://github.com/Zhangyk1122/AI-USB/releases)，下载最新的 `AI-USB-Demo-win32-x64.zip` 与 `SHA256SUMS.txt`。
+2. （建议）在 Windows 上核对哈希：`Get-FileHash .\AI-USB-Demo-win32-x64.zip -Algorithm SHA256`，与 `SHA256SUMS.txt` 比对。
+3. 解压到 U 盘根目录，得到 `AI-USB-Demo/`；解压后约 948 MB，U 盘建议 exFAT/NTFS。
+4. 插到 Windows，双击 `dsh.bat`（或在该目录终端执行 `dsh`；PowerShell 里写 `.\dsh`）。
+   终端打印 `http://127.0.0.1:端口` 后浏览器会自动打开；关闭终端即停止服务。
+5. 首次使用在 Harness 的供应商设置里填 API Key，配置保存在 U 盘 `data/harness`。
+   以后更新走维护菜单 `4` → `1`，只下载变化的文件。
 
 工作目录默认为 `workspace/`；也可以在启动前用环境变量指定：
 
