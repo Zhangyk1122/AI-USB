@@ -82,7 +82,13 @@ node lib/update.mjs --plan    # 打印增量链
 node lib/update.mjs --yes     # 直接更新
 ```
 
-> 增量只影响 `lib/`、`tests/`、`platforms/` 与根目录程序文件；`data/`、`config/`、`workspace/` 永远不会被改动。
+> 增量只影响 `lib/`、`tests/`、`platforms/` 与根目录程序文件；`data/`、`config/`、`workspace/` 永远不会被改动——
+> 即使增量包或整包里带了这些路径，也会被 `isUpdatablePath` 拒绝并记录为 skipped。
+> 整包更新前还会校验包内必需文件，缺件直接中止。
+>
+> 插件位置：随包插件本体在 `platforms/win32-x64/node_modules/@deepseek-ai/`，第三方插件装在
+> `data/harness/profiles/<profile>/node_modules/`（U 盘），pnpm 内容仓库在本机缓存（可重建）。
+> 更新不会动这些目录，因此插件的启用状态和已装插件都保留。
 
 ### 从本地目录更新
 

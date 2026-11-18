@@ -140,6 +140,18 @@ test('a delta cannot write files outside the packaged set', t => {
   assert.deepEqual(journal.skipped.sort(), ['../escape.txt', 'SHA256SUMS.txt']);
 });
 
+test('user data paths are never updatable, even if a package contains them', t => {
+  const { root, extracted, transaction, delta } = deltaFixture(t);
+  put(extracted, 'data/harness/profiles/web/package.json', '{}');
+  delta.files.push({ path: 'data/harness/profiles/web/package.json', sha256: sha256File(path.join(extracted, 'data/harness/profiles/web/package.json')) });
+  delta.files.push({ path: 'workspace/README.md', sha256: '0'.repeat(64) });
+  applyFileDelta(root, extracted, delta, transaction);
+  assert.ok(!fs.existsSync(path.join(root, 'data/harness/profiles/web/package.json')));
+  const journal = JSON.parse(fs.readFileSync(path.join(transaction, 'journal.json'), 'utf8'));
+  assert.ok(journal.skipped.includes('data/harness/profiles/web/package.json'));
+  assert.ok(journal.skipped.includes('workspace/README.md'));
+});
+
 test('a corrupted delta rolls back every file it touched', t => {
   const { root, extracted, transaction, delta } = deltaFixture(t);
   delta.files[1].sha256 = '0'.repeat(64);
