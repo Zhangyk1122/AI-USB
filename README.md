@@ -114,7 +114,7 @@ experimental 插件由上游标注为不稳定；升级 DSH 版本后建议逐�
 
 ```powershell
 node lib/seal.mjs                  # 重算 RUNTIME-SHA256.json、同步版本与 trimmed
-node --test tests/*.test.mjs       # 28 项
+node --test tests/*.test.mjs       # 37 项
 node lib/doctor.mjs --verify-hashes
 ```
 
@@ -132,10 +132,8 @@ git push origin main --tags
 Actions → `build-portable`。全部通过后，Releases 里会出现：
 
 ```
-AI-USB-Demo-win32-x64.zip      ≈ 265 MB   整包
+AI-USB-Demo-win32-x64.zip      ≈ 265 MB   完整包
 SHA256SUMS.txt                    校验和
-delta-from-<上一版>.zip            增量包（只含变化的文件）
-delta-from-<上一版>.json           增量清单
 ```
 
 ### 5. 下载并核对
@@ -149,7 +147,7 @@ Get-FileHash .\AI-USB-Demo-win32-x64.zip -Algorithm SHA256
 
 两种方式：
 
-- **在线增量**（推荐）：U 盘插到 Windows，双击 `Windows-Maintain.bat` → `4` → `1`，只下载变化的文件，失败自动回退。
+- **在线更新**（推荐）：U 盘插到 Windows，双击 `Windows-Maintain.bat` → `4` → `1`，下载最新完整包并自动校验、替换，`data/` 与 `workspace/` 保留。
 - **手动整包**：下载 zip 解压，只覆盖程序文件（`platforms/`、`lib/`、`dsh.bat`、文档），**不要覆盖 `data/`** —— 那里是你的 Key、配置和会话。
 
 ### 7. 回滚
@@ -172,7 +170,7 @@ Get-FileHash .\AI-USB-Demo-win32-x64.zip -Algorithm SHA256
 & '.\Windows-Maintain.bat'
 ```
 
-菜单提供：统一离线诊断、备份、查看/恢复备份、**从 GitHub 在线增量更新**（或本地目录更新）、恢复中断操作、清理遗留运行记录。细节见 [MAINTENANCE.md](MAINTENANCE.md)。
+菜单提供：统一离线诊断、备份、查看/恢复备份、**从 GitHub 在线更新完整包**（或本地目录更新）、恢复中断操作、清理遗留运行记录。细节见 [MAINTENANCE.md](MAINTENANCE.md)。
 
 `BUILD-INFO.json` 里的版本号**在每次启动时自动同步**（从 `node.exe` 和 dsh 的 `package.json` 读取），不需要手动维护。打包新版时用 `node lib/seal.mjs` 一次生成 `RUNTIME-SHA256.json`、版本号和 `trimmed` 日期；`node lib/version.mjs` 只用于单独查看版本。
 
